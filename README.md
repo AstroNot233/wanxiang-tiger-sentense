@@ -20,21 +20,24 @@
 config/default.yaml         最小 default 配置，schema_list 为 tiger、tiger_char
 schema/tiger.schema.yaml    整句方案（整词码）
 schema/tiger_char.schema.yaml       原码整句方案（单字序列）
+schema/tiger_chars.schema.yaml      单字表（供 tiger 的 table_translator 预编译）
 tools/build.nu              组装 dist：配置层 + 词库 + 语法模型
 tools/check.nu              用 rime_deployer 校验 dist
 flake.nix                   工具链：nushell、curl、librime 与 nixfmt
 .github/workflows/build.yml 自动构建
 ```
 
-`dist/` 产出九个文件：
+`dist/` 产出十一个文件：
 
 ```
 default.yaml
 tiger.schema.yaml
 tiger_char.schema.yaml
+tiger_chars.schema.yaml     单字表 schema（仅作依赖，不进 schema_list）
 tiger.dict.yaml             import 下面两份
 tiger_seq.dict.yaml         import 字表（一码加 '）+ 转写词库
 tiger_official.dict.yaml    官方字词表 171,074 条（3.7 万单字含简码、13.4 万词）
+tiger_chars.dict.yaml       单字表 37,561 条（低权重，供 table_translator 精确命中）
 tiger_seq_chars.dict.yaml   同上，一码条目改写为 x'
 tiger_words.dict.yaml       万象词库转写 1,624,478 条
 wanxiang-lts-zh-hans.gram   语法模型
@@ -44,10 +47,12 @@ wanxiang-lts-zh-hans.gram   语法模型
 
 - **编码**：每字取虎码全码（字表首条记录所在首字母家族内最长码）；整词二字 `AaAbBaBb`、三字 `AaBaCaCb`、四字以上 `AaBaCaZa`。用官方 13.4 万条词反查，公式与官方全码一致率 97.7%，其余为官方简码条目，简码已原样收录。
 - **整词码方案**：`enable_completion` 打开，打 2、3 码即可补全整词码；连续输入按词切分并组句，排序由语法模型决定。
+- **单字与一码词**：一码条目写作 `x'`，单字母输入由 algebra 派生过去，因此单字母不会成为切句单位；单字权重高于一码词。
+- **单字优先**：单字单独成表、由 `table_translator` 精确命中并拉高 `initial_quality`，4 码以内的单字恒在词与句之前；该表不做补全、不学习，主翻译器也不学习，避免用户词把单字挤下去。
 - **原码整句方案**：同一字的不同长度编码共用一个词频，逐字输入即出句；一码条目写成 `x'`，避免单字母切断码流，`_` 可手动分词。
 - **权重**：官方表按表中顺序递减（`的`=1000000），万象转写词条沿用原词频。
 - **标点**：schema 内置 `full_shape` / `half_shape` 中文标点映射，`ascii_punct` 切换中英标点。
-- **造词与学习**：` `` ` 前缀自造词，上屏词条进入用户词典。
+- **造词**：` `` ` 前缀自造词，上屏词条进入 zc 用户词典。
 - **快捷键**：`-`/`=` 翻页，`Alt+←/→` 移动光标，`Control+w` 删一个词，`Shift+space` 切换方案。
 
 ## 构建

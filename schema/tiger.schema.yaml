@@ -6,7 +6,8 @@ schema:
     - zhhwux
   description: |
     虎码整句：2-4 码任意输入，整句组词，单字/词/句混排。
-  dependencies: []
+  dependencies:
+    - tiger_chars
 
 switches:
   - name: ascii_mode
@@ -35,6 +36,7 @@ engine:
     - fallback_segmentor
   translators:
     - punct_translator
+    - table_translator@chars
     - script_translator
     - script_translator@add_user_dict
     - script_translator@user_dict_set
@@ -55,7 +57,7 @@ translator:
   prism: tiger
   enable_completion: true
   enable_sentence: true
-  enable_user_dict: true
+  enable_user_dict: false
   user_dict: tiger
   initial_quality: 4
   spelling_hints: 50
@@ -65,6 +67,14 @@ translator:
   core_word_length: 4
   max_word_length: 7
   contextual_suggestions: false
+
+chars:
+  dictionary: tiger_chars
+  prism: tiger_chars
+  enable_sentence: false
+  enable_completion: false
+  enable_user_dict: false
+  initial_quality: 1000000000
 
 user_dict_set:
   dictionary: tiger
@@ -76,7 +86,7 @@ user_dict_set:
   max_word_length: 7
   spelling_hints: 50
   comment_format:
-  enable_user_dict: true
+  enable_user_dict: false
   user_dict: zc
 
 add_user_dict:
@@ -86,7 +96,7 @@ add_user_dict:
   initial_quality: -1
   user_dict: zc
   enable_completion: true
-  enable_user_dict: true
+  enable_user_dict: false
   spelling_hints: 50
   comment_format:
   prefix: "``"
@@ -97,7 +107,8 @@ speller:
   initials: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
   delimiter: " '"
   auto_select: false
-  algebra: []
+  algebra:
+    - "derive/^([a-z])$/$1'/"
 
 recognizer:
   import_preset: default

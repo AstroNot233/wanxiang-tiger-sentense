@@ -2,6 +2,8 @@
 
 const SOURCE_DICTS = ['jichu' 'duoyin' 'diming' 'mingren' 'yiren']
 const OFFICIAL_WEIGHT_BASE = 1000000
+const CHAR_WEIGHT_BASE = 1000
+const SHORT_WORD_WEIGHT_BASE = 5000000
 
 def dict-rows [path: path] {
   open --raw $path
@@ -84,9 +86,20 @@ def write-header [name: string] {
   ] | str join (char nl)
 }
 
+# 一码条目写成 x'，由 algebra 把单字母输入派生过去，避免单字母成为切句单位；
+# 同一词的不同长度编码共用一个词频。
 def export-official [rows: table, out: path] {
+  let ranked = ($rows
+    | enumerate
+    | each {|r| {text: $r.item.text, w: ($OFFICIAL_WEIGHT_BASE - $r.index)} }
+    | sort-by w --reverse
+    | uniq-by text)
+  let wmap = ($ranked | transpose -r -d | into record)
   let body = ($rows | enumerate | each {|r|
-    $"($r.item.text)\t($r.item.code)\t($OFFICIAL_WEIGHT_BASE - $r.index)"
+    let one = ($r.item.code | str length) == 1
+    let code = if $one { $r.item.code + "'" } else { $r.item.code }
+    let w = if $one { $SHORT_WORD_WEIGHT_BASE - $r.index } else { $wmap | get -o $r.item.text }
+    $"($r.item.text)\t($code)\t($w)"
   } | str join (char nl))
 
   (write-header 'tiger_official') ++ (char nl) ++ $body ++ (char nl) | save --force $out
@@ -191,6 +204,7 @@ def main [
   cp ($env.FILE_PWD | path join '..' 'config' 'default.yaml') $dst
   cp ($env.FILE_PWD | path join '..' 'schema' 'tiger.schema.yaml') $dst
   cp ($env.FILE_PWD | path join '..' 'schema' 'tiger_char.schema.yaml') $dst
+  cp ($env.FILE_PWD | path join '..' 'schema' 'tiger_chars.schema.yaml') $dst
 
   let rows = (table-rows ($t | path join 'tables/tiger.txt'))
   let char_rows = ($rows | where {|r| ($r.text | split chars | length) == 1 })
@@ -198,8 +212,9 @@ def main [
   print $"码表 ($rows | length) 条，单字 ($char_rows | length) 条，编码字 ((($codes | columns) | length)) 个"
 
   let official = (export-official $rows ($dst | path join 'tiger_official.dict.yaml'))
+  let chars = (export-chars $rows ($dst | path join 'tiger_chars.dict.yaml'))
   let seq_chars = (export-seq-chars $rows ($dst | path join 'tiger_seq_chars.dict.yaml'))
-  print $"官方字词表 ($official) 条，原码整句字表 ($seq_chars) 条"
+  print $"官方字词表 ($official) 条，单字表 ($chars) 条，原码整句字表 ($seq_chars) 条"
 
   let sources = ($SOURCE_DICTS | each {|d| $w | path join 'dicts' $"($d).dict.yaml" } | where {|p| $p | path exists })
   let count = (export-words $codes $sources ($dst | path join 'tiger_words.dict.yaml') $limit)
@@ -213,4 +228,15 @@ def main [
   }
 
   print $"完成：($dst)"
+}
+# 单字表：给 table_translator 提供精确命中，权重压低以免主导整句
+def export-chars [rows: table, out: path] {
+  let kept = ($rows | where {|r| ($r.text | split chars | length) == 1 })
+  let body = ($kept | enumerate | each {|r|
+    let code = if ($r.item.code | str length) == 1 { $r.item.code + "'" } else { $r.item.code }
+    $"($r.item.text)\t($code)\t($CHAR_WEIGHT_BASE - $r.index)"
+  } | str join (char nl))
+
+  (write-header 'tiger_chars') ++ (char nl) ++ $body ++ (char nl) | save --force $out
+  $kept | length
 }
