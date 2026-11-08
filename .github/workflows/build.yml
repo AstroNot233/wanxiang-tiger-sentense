@@ -1,0 +1,67 @@
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      wanxiang_ref:
+        description: rime-wanxiang 分支或标签，留空取默认分支
+        default: ""
+      tiger_code_ref:
+        description: lvyww/tiger-code 分支、标签或 commit，留空取默认分支
+        default: ""
+  push:
+    tags: ["v*"]
+  schedule:
+    - cron: "17 20 * * 0"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: 拉取 rime-wanxiang
+        env:
+          REF: ${{ inputs.wanxiang_ref }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 ${REF:+-b "$REF"} https://github.com/amzxyz/rime-wanxiang upstream
+          git -C upstream log --oneline -1
+
+      - name: 拉取 tiger-code
+        env:
+          REF: ${{ inputs.tiger_code_ref }}
+        run: |
+          set -euo pipefail
+          git init -q tiger-code
+          git -C tiger-code remote add origin https://github.com/lvyww/tiger-code
+          git -C tiger-code fetch --depth 1 origin ${REF:-HEAD}
+          git -C tiger-code checkout -q FETCH_HEAD
+          git -C tiger-code log --oneline -1
+          test -f tiger-code/tables/tiger.txt
+
+      - name: 下载语法模型
+        run: |
+          set -euo pipefail
+          curl -fL --retry 5 --retry-all-errors \
+            -o wanxiang-lts-zh-hans.gram \
+            https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram
+
+      - name: 构建
+        run: |
+          set -euo pipefail
+          nix shell nixpkgs#nushell -c \
+            nu tools/build.nu -w upstream -t tiger-code -o dist -g wanxiang-lts-zh-hans.gram
+
+      - name: 校验
+        run: |
+          set -euo pipefail
+          nix shell nixpkgs#nushell nixpkgs#librime -c nu tools/check.nu -d dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wanxiang-tiger-sentense-dist
+          path: dist/
+          retention-days: 14

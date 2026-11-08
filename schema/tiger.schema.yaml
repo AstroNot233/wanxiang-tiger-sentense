@@ -1,0 +1,201 @@
+schema:
+  schema_id: tiger
+  name: 万象虎·整句
+  version: "2026.11"
+  author:
+    - zhhwux
+  description: |
+    虎码整句：2-4 码任意输入，整句组词，单字/词/句混排。
+  dependencies: []
+
+switches:
+  - name: ascii_mode
+    states: [中文, 英文]
+  - name: ascii_punct
+    states: [中标, 英标]
+  - name: full_shape
+    states: [半角, 全角]
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - affix_segmentor@add_user_dict
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - script_translator
+    - script_translator@add_user_dict
+    - script_translator@user_dict_set
+  filters:
+    - uniquifier
+
+grammar:
+  language: wanxiang-lts-zh-hans
+  collocation_max_length: 6
+  collocation_min_length: 2
+  collocation_penalty: -14
+  non_collocation_penalty: -6
+  weak_collocation_penalty: -100
+  rear_penalty: -18
+
+translator:
+  dictionary: tiger
+  prism: tiger
+  enable_completion: true
+  enable_sentence: true
+  enable_user_dict: true
+  user_dict: tiger
+  initial_quality: 4
+  spelling_hints: 50
+  always_show_comments: true
+  comment_format:
+  max_homophones: 8
+  core_word_length: 4
+  max_word_length: 7
+  contextual_suggestions: false
+
+user_dict_set:
+  dictionary: tiger
+  prism: tiger
+  initial_quality: 2.5
+  enable_completion: false
+  enable_sentence: false
+  core_word_length: 4
+  max_word_length: 7
+  spelling_hints: 50
+  comment_format:
+  enable_user_dict: true
+  user_dict: zc
+
+add_user_dict:
+  tag: add_user_dict
+  dictionary: tiger
+  prism: tiger
+  initial_quality: -1
+  user_dict: zc
+  enable_completion: true
+  enable_user_dict: true
+  spelling_hints: 50
+  comment_format:
+  prefix: "``"
+  tips: "〔开始造词〕"
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA/
+  initials: zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA
+  delimiter: " '"
+  auto_select: false
+  algebra: []
+
+recognizer:
+  import_preset: default
+  patterns:
+    add_user_dict: "^``[A-Za-z/`']*$"
+    email: "^[A-Za-z][-_.0-9A-Za-z]*@.*$"
+    url: "^(www[.]|https?:|ftp[.:]|mailto:|file:).*$"
+
+punctuator:
+  digit_separators: ":,."
+  full_shape:
+    ' ' : { commit: '　' }
+    ',' : { commit: ， }
+    '.' : { commit: 。 }
+    '<' : [ 《, 〈 ]
+    '>' : [ 》, 〉 ]
+    '/' : [ ／, ÷ ]
+    '?' : { commit: ？ }
+    ';' : { commit: ； }
+    ':' : { commit: ： }
+    '''' : { pair: [ '‘', '’' ] }
+    '"' : { pair: [ '“', '”' ] }
+    '\' : [ 、, ＼ ]
+    '|' : [ ·, ｜ ]
+    '`' : ｀
+    '~' : ～
+    '!' : { commit: ！ }
+    '@' : ＠
+    '#' : ＃
+    '%' : ％
+    '$' : ￥
+    '^' : { commit: …… }
+    '&' : ＆
+    '*' : ＊
+    '(' : （
+    ')' : ）
+    '-' : －
+    '_' : ——
+    '+' : ＋
+    '=' : ＝
+    '[' : 『
+    ']' : 』
+  half_shape:
+    ',' : { commit: ， }
+    '.' : { commit: 。 }
+    '<' : [ 《, 〈 ]
+    '>' : [ 》, 〉 ]
+    '/' : { commit: '/' }
+    '?' : { commit: ？ }
+    ';' : { commit: ； }
+    ':' : { commit: ： }
+    '''' : { pair: [ '‘', '’' ] }
+    '"' : { pair: [ '“', '”' ] }
+    '\' : 、
+    '|' : [ '|', ｜, '§', '¦' ]
+    '`' : [ '`', '·' ]
+    '~' : [ '~', ～ ]
+    '!' : { commit: ！ }
+    '@' : [ '@', ＠ ]
+    '#' : [ '#', ＃ ]
+    '%' : [ '%', ％ ]
+    '$' : [ '$', ￥ ]
+    '^' : [ '^', …… ]
+    '&' : [ '&', ＆ ]
+    '*' : [ '*', ＊ ]
+    '(' : （
+    ')' : ）
+    '-' : [ '-', －, — ]
+    '_' : [ '_', —— ]
+    '+' : [ '+', ＋ ]
+    '=' : [ '=', ＝ ]
+    '[' : 『
+    ']' : 』
+
+key_binder:
+  import_preset: default
+  bindings:
+    - { when: composing, accept: Alt+Left, send: Shift+Left }
+    - { when: composing, accept: Alt+Right, send: Shift+Right }
+    - { when: composing, accept: Control+w, send: Control+BackSpace }
+    - { when: always, accept: Shift+space, select: .next }
+    - { match: "^.*`$", accept: "`", send_sequence: '{BackSpace}{Home}{`}{`}{End}' }
+
+editor:
+  bindings:
+    space: confirm
+    Return: commit_raw_input
+    Control+Return: commit_script_text
+    Control+Shift+Return: commit_comment
+    BackSpace: revert
+    Delete: delete
+    Control+BackSpace: back_syllable
+    Control+Delete: delete_candidate
+    Escape: cancel
+
+navigator:
+  bindings:
+    Left: left_by_char_no_loop
+    Right: right_by_char_no_loop
+    Shift+Left: left_by_syllable
+    Shift+Right: right_by_syllable
