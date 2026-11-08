@@ -22,6 +22,7 @@ schema/tiger.schema.yaml    整句方案（整词码）
 schema/tiger_char.schema.yaml       原码整句方案（单字序列）
 tools/build.nu              组装 dist：配置层 + 词库 + 语法模型
 tools/check.nu              用 rime_deployer 校验 dist
+flake.nix                   工具链：nushell、curl、librime 与 nixfmt
 .github/workflows/build.yml 自动构建
 ```
 
@@ -51,7 +52,7 @@ wanxiang-lts-zh-hans.gram   语法模型
 
 ## 构建
 
-需要 `nu`；校验需要 `librime`。
+`nix develop` 提供工具链：`nu`、`curl`、`rime_deployer`（来自 `librime`）。
 
 ```bash
 git clone --depth 1 https://github.com/amzxyz/rime-wanxiang ../rime-wanxiang
@@ -60,13 +61,15 @@ git clone --depth 1 https://github.com/lvyww/tiger-code ../tiger-code
 curl -fL --retry 3 -o wanxiang-lts-zh-hans.gram \
   https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram
 
-nix shell nixpkgs#nushell -c \
-  nu tools/build.nu -w ../rime-wanxiang -t ../tiger-code -o dist -g wanxiang-lts-zh-hans.gram
+nix develop --command nu tools/build.nu \
+  -w ../rime-wanxiang -t ../tiger-code -o dist -g wanxiang-lts-zh-hans.gram
 
-nix shell nixpkgs#nushell nixpkgs#librime -c nu tools/check.nu -d dist
+nix develop --command nu tools/check.nu -d dist
 ```
 
 `--quick` 只转写每个词库前 2000 条，用于验证配置。省略 `-g` 时会复用 `dist/` 里已有的语法模型。
+
+仓库另提供 `nix fmt`（`nixfmt-rfc-style`）。
 
 ## 部署
 

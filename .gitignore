@@ -1,3 +1,5 @@
 dist/
 .check/
 *.gram
+result
+result-*

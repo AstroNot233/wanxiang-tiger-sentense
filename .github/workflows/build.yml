@@ -52,13 +52,13 @@ jobs:
       - name: 构建
         run: |
           set -euo pipefail
-          nix shell nixpkgs#nushell -c \
-            nu tools/build.nu -w upstream -t tiger-code -o dist -g wanxiang-lts-zh-hans.gram
+          nix develop --command nu tools/build.nu \
+            -w upstream -t tiger-code -o dist -g wanxiang-lts-zh-hans.gram
 
       - name: 校验
         run: |
           set -euo pipefail
-          nix shell nixpkgs#nushell nixpkgs#librime -c nu tools/check.nu -d dist
+          nix develop --command nu tools/check.nu -d dist
 
       - uses: actions/upload-artifact@v4
         with:
